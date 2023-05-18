@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { redisClient } from "../index";
-import { BadRequestError } from "../errors";
+import { ManyRequestsError } from "../errors";
 
+// rate limiter for requests per second for a certain user.
 export const windowRateLimiter = async (
   req: Request,
   res: Response,
@@ -17,7 +18,7 @@ export const windowRateLimiter = async (
       redisClient.decr(key);
       next();
     } else {
-      throw new BadRequestError(
+      throw new ManyRequestsError(
         "You have sent too many request. wait for a moment"
       );
     }

@@ -1,5 +1,11 @@
 import express from "express";
-import { currentUser, requireAuth, windowRateLimiter } from "../middlewares";
+import {
+  currentUser,
+  requireAuth,
+  windowRateLimiter,
+  monthlyRateLimiter,
+  globalRateLimiter,
+} from "../middlewares";
 
 import NotificationController from "../controllers/notification.controller";
 
@@ -9,6 +15,8 @@ router.get(
   "/send",
   currentUser,
   requireAuth,
+  globalRateLimiter,
+  monthlyRateLimiter,
   windowRateLimiter,
   NotificationController.sendNotification
 );
