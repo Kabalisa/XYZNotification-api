@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { createClient } from "redis-mock";
+import { createClient } from "redis";
 import { mockRequest, mockResponse } from "jest-mock-req-res";
-import mongoose from "mongoose";
 import { windowRateLimiter } from "../middlewares";
 
 describe("windowRateLimiter middleware", () => {
@@ -10,8 +9,9 @@ describe("windowRateLimiter middleware", () => {
   let res: Response;
   let next: NextFunction;
 
-  beforeEach(() => {
+  beforeAll(async () => {
     redisClient = createClient();
+    await redisClient.connect();
     req = mockRequest({
       currentUser: { phoneNumber: "0788112233" },
     });
@@ -19,12 +19,8 @@ describe("windowRateLimiter middleware", () => {
     next = jest.fn();
   });
 
-  afterEach(() => {
+  afterAll(() => {
     redisClient.quit();
-  });
-
-  afterAll(async () => {
-    await mongoose.connection.close();
   });
 
   it("windowRateLimiter should allow request if token is available", async () => {
@@ -33,5 +29,16 @@ describe("windowRateLimiter middleware", () => {
     await windowRateLimiter(req, res, next);
 
     expect(next).toHaveBeenCalled();
+  });
+
+  it("monthlyRateLimiter should reject the request if token is not available", async () => {
+    await redisClient.set("0788112233", 0);
+
+    await windowRateLimiter(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(429);
+    expect(res.send).toHaveBeenCalledWith(
+      "You have sent too many request. wait for a moment"
+    );
   });
 });

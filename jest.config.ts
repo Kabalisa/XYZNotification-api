@@ -5,6 +5,7 @@ const config: Config.InitialOptions = {
   transform: {
     "^.+\\.ts?$": "ts-jest",
   },
+  // setupFilesAfterEnv: ["./jest.setup.redis-mock.js"],
 };
 
 export default config;

@@ -1,10 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { createClient } from "redis";
-import { createClient as testCreateClient } from "redis-mock";
-import { ManyRequestsError, BadRequestError } from "../errors";
+import { BadRequestError } from "../errors";
 
-const redisClient =
-  process.env.NODE_ENV === "test" ? testCreateClient() : createClient();
+const redisClient = createClient();
 
 redisClient.on("error", (err) => {
   throw new BadRequestError("connection to redis failed");
@@ -15,38 +13,32 @@ export const globalRateLimiter = async (
   res: Response,
   next: NextFunction
 ) => {
-  if (process.env.NODE_ENV !== "test") {
-    try {
-      await redisClient.connect();
-    } catch (error) {
-      throw new BadRequestError("connection to redis failed");
-    }
+  try {
+    await redisClient.connect();
+  } catch (error) {
+    throw new BadRequestError("connection to redis failed");
   }
 
-  try {
-    const systemMaxRequestsPerSecond = 5000;
-    const key = "system:rate-limit";
+  const systemMaxRequestsPerSecond = 5000;
+  const key = "system:rate-limit";
 
-    const record = await redisClient.get(key);
+  const record = await redisClient.get(key);
 
-    if (record) {
-      if (Number(record) < systemMaxRequestsPerSecond) {
-        redisClient.incr(key);
-        next();
-      } else {
-        throw new ManyRequestsError(
-          "the system is receiving many requests. try again later"
-        );
-      }
-    } else {
-      redisClient.set(key, 1);
-      redisClient.expire(key, 1);
+  if (record) {
+    if (Number(record) < systemMaxRequestsPerSecond) {
+      redisClient.incr(key);
       next();
+      redisClient.quit();
+    } else {
+      redisClient.quit();
+      return res
+        .status(429)
+        .send("the system is receiving many requests. try again later");
     }
-  } catch (error: any) {
-    redisClient.quit();
-    throw new BadRequestError(error.name);
-  } finally {
+  } else {
+    redisClient.set(key, 1);
+    redisClient.expire(key, 1);
+    next();
     redisClient.quit();
   }
 };
