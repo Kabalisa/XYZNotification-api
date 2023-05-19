@@ -19,7 +19,7 @@ export const windowRateLimiter = async (
     throw new BadRequestError("connection to redis failed");
   }
 
-  const maxRequestsPerSecond = 5;
+  const maxRequestsPerSecond = req.currentUser?.requestsPerSecond!;
   const key = `${req.currentUser?.phoneNumber}`;
   const record = await redisClient.get(key);
 
@@ -35,7 +35,6 @@ export const windowRateLimiter = async (
         .send("You have sent too many request. wait for a moment");
     }
   } else {
-    console.log("hre2");
     redisClient.set(key, maxRequestsPerSecond - 1);
     redisClient.expire(key, 1);
     next();

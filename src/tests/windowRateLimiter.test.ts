@@ -13,7 +13,7 @@ describe("windowRateLimiter middleware", () => {
     redisClient = createClient();
     await redisClient.connect();
     req = mockRequest({
-      currentUser: { phoneNumber: "0788112233" },
+      currentUser: { phoneNumber: "0788112233", requestsPerSecond: 5 },
     });
     res = mockResponse();
     next = jest.fn();
